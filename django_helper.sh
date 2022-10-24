@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script only download packages through pip. (django, django-environ & psycopg2)
+
 #==============
 # Begin process 
 #==============
@@ -11,11 +13,13 @@ typeset -A config
 config=(
     [projectname]="my_project"
     [dbengine]="postgresql"
+    [dbname]="mydb"
     [user]="root"
     [password]="root"
     [host]=127.0.0.1
     [port]=5432
     [djangoversion]="4.1.2"
+    [djangoapps]=false
     )
 
 while read line
@@ -48,6 +52,15 @@ else
     pip install django django-environ
 fi
 
+# ================
+# DB installations 
+# ================
+
+if [[ ${config[dbengine]} == 'postgresql' ]];then
+    echo "[*] installing database dependencies..."
+    pip install psycopg2
+fi
+
 # =============================
 # project creation with django
 # =============================
@@ -68,11 +81,11 @@ SECRETKEY=$(grep SECRET_KEY $SETTINGSFILE | awk -F ' ' {'print $3'})
 
 echo "SECRET_KEY=$SECRETKEY" > ${config[projectname]}/.env
 echo "ENGINE='django.db.backends.${config[dbengine]}'" >> ${config[projectname]}/.env
+echo "NAME='${config[dbname]}'" >> ${config[projectname]}/.env
 echo "USER=${config[user]}" >> ${config[projectname]}/.env
 echo "PASSWORD=${config[password]}" >> ${config[projectname]}/.env
 echo "HOST=${config[host]}" >> ${config[projectname]}/.env
 echo "PORT=${config[port]}" >> ${config[projectname]}/.env
-
 
 # ============================
 # Modifying the settings file
@@ -80,8 +93,13 @@ echo "PORT=${config[port]}" >> ${config[projectname]}/.env
 
 sed -Ei '/from.*/a import environ\nimport os' $SETTINGSFILE
 sed -Ei '/BASE_DIR = Path.*/a env = environ.Env()' $SETTINGSFILE
-sed -Ei "/env =.*/a environ.Env.read_env(os.path.join(BASE_DIR, \'.env\'))"
+sed -Ei "/env =.*/a environ.Env.read_env(os.path.join(BASE_DIR, \'.env\'))" $SETTINGSFILE
 sed -Ei "s/SECRET_KEY =.*/SECRET_KEY = env(\'SECRET_KEY\')/" $SETTINGSFILE
 sed -Ei "s/'ENGINE':.*/'ENGINE': env('ENGINE'),/" $SETTINGSFILE
 sed -Ei "s/'NAME': BASE.*/'NAME': env('NAME'),\n\t\t'USER': env('USER'),\n\t\t'PASSWORD': env('PASSWORD'),\n\t\t'HOST': env('HOST'),\n\t\t'PORT': env('PORT'),/" $SETTINGSFILE
+
+if [[ ${config[djangoapps]} -eq true ]]; then
+    echo ${config[djangoapps]}
+fi
+
 
