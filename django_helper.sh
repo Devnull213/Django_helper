@@ -20,15 +20,15 @@ config=(
     [port]=5432
     [djangoversion]="4.1.2"
     [djangoapps]=false
-    [appname]=[]
+    [appname]=""
     )
 
 while read line
 do 
     if echo $line | grep -F = &>/dev/null
     then
-	varname=$(echo "$line" | awk -F = '{print $1}')
-	config[$varname]=$(echo $line | awk -F = '{print $2}')
+	varname=$(echo "$line" | awk -F = "{print $1}")
+	config[$varname]=$(echo $line | awk -F = "{print $2}")
     fi
 done < config.cfg
 
@@ -45,7 +45,7 @@ source venv/bin/activate
 # ======================
 
 TODO: Need improvement
-if [[ ${config[djangoversion]} != '4.1.2' ]];then
+if [[ ${config[djangoversion]} != "4.1.2" ]];then
     echo "[*] Installing Django ${config[djandoversion]} and other packages..."
     pip install django==${config[djangoversion]} django-environ
 else
@@ -57,7 +57,7 @@ fi
 # DB installations 
 # ================
 
-if [[ ${config[dbengine]} == 'postgresql' ]];then
+if [[ ${config[dbengine]} == "postgresql" ]];then
     echo "[*] installing database dependencies..."
     pip install psycopg2
 fi
@@ -78,7 +78,7 @@ fi
 echo "[*] Working on environment variables..."
 
 SETTINGSFILE=${config[projectname]}/${config[projectname]}/settings.py
-SECRETKEY=$(grep SECRET_KEY $SETTINGSFILE | awk -F ' ' {'print $3'})
+SECRETKEY=$(grep SECRET_KEY $SETTINGSFILE | awk -F " " {"print $3"})
 
 echo "SECRET_KEY=$SECRETKEY" > ${config[projectname]}/.env
 echo "ENGINE='django.db.backends.${config[dbengine]}'" >> ${config[projectname]}/.env
@@ -92,8 +92,8 @@ echo "PORT=${config[port]}" >> ${config[projectname]}/.env
 # Modifying the settings file
 # ============================
 
-sed -Ei '/from.*/a import environ\nimport os' $SETTINGSFILE
-sed -Ei '/BASE_DIR = Path.*/a env = environ.Env()' $SETTINGSFILE
+sed -Ei "/from.*/a import environ\nimport os" $SETTINGSFILE
+sed -Ei "/BASE_DIR = Path.*/a env = environ.Env()" $SETTINGSFILE
 sed -Ei "/env =.*/a environ.Env.read_env(os.path.join(BASE_DIR, \'.env\'))" $SETTINGSFILE
 sed -Ei "s/SECRET_KEY =.*/SECRET_KEY = env(\'SECRET_KEY\')/" $SETTINGSFILE
 sed -Ei "s/'ENGINE':.*/'ENGINE': env('ENGINE'),/" $SETTINGSFILE
