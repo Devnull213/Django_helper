@@ -1,8 +1,0 @@
-
-projectname=test_sh_project
-secret_key=kasjdflajsflasjdflajsdfkjas
-database=postgresql
-user=useradmin
-password=admin123
-host=127.0.0.1
-port=5432
