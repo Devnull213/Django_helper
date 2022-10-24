@@ -6,15 +6,26 @@
 
 echo "[*] Retrieving template information..."
 
-PROJECTNAME=$(grep projectname template | awk -F = {'print $2'})
-SECRETKEY=$(grep secret_key template | awk -F = {'print $2'})
-DATABASE=$(grep database template | awk -F = {'print $2'})
-USER=$(grep user template | awk -F = {'print $2'})
-PASSWORD=$(grep password template | awk -F = {'print $2'})
-HOST=$(grep host template | awk -F = {'print $2'})
-PORT=$(grep port template | awk -F = {'print $2'})
-SETTINGSFILE=$PROJECTNAME/$PROJECTNAME/settings.py
+typeset -A config
 
+config=(
+    [projectname]="my_project"
+    [dbengine]="postgresql"
+    [user]="root"
+    [password]="root"
+    [host]=127.0.0.1
+    [port]=5432
+    [djangoversion]="4.1.2"
+    )
+
+while read line
+do 
+    if echo $line | grep -F = &>/dev/null
+    then
+	varname=$(echo "$line" | awk -F = '{print $1}')
+	config[$varname]=$(echo $line | awk -F = '{print $2}')
+    fi
+done < config.cfg
 
 #=============================
 # Create a virtual environment
@@ -24,13 +35,18 @@ echo "[*] Creating a Python virtual environment..."
 python3 -m venv venv
 source venv/bin/activate
 
-# ==============================
-# Install latest Django version
-# ==============================
+# ======================
+# Install Django version
+# ======================
 
-echo "[*] Installing Django and other packages..."
-pip install django 
-pip install django-environ
+TODO: Need improvement
+if [[ ${config[djangoversion]} != '4.1.2' ]];then
+    echo "[*] Installing Django ${config[djandoversion]} and other packages..."
+    pip install django==${config[djangoversion]} django-environ
+else
+    echo "[*] Installing latest version of Django and other packages..."
+    pip install django django-environ
+fi
 
 # =============================
 # project creation with django
@@ -38,7 +54,7 @@ pip install django-environ
 
 if [[ $? -eq 0 ]]; then
     echo "[*] Creating Django project..."
-    django-admin startproject $PROJECTNAME
+    django-admin startproject ${config[projectname]}
 fi
 
 # =================================
@@ -46,17 +62,26 @@ fi
 # =================================
 
 echo "[*] Working on environment variables..."
-echo "SECRET_KEY=$SECRETKEY" > $PROJECTNAME/.env
-echo "DATABASE=$DATABASE" >> $PROJECTNAME/.env
-echo "USER=$USER" >> $PROJECTNAME/.env
-echo "PASSWORD=$PASSWORD" >> $PROJECTNAME/.env
-echo "HOST=$HOST" >> $PROJECTNAME/.env
-echo "PORT=$PORT" >> $PROJECTNAME/.env
+
+SETTINGSFILE=${config[projectname]}/${config[projectname]}/settings.py
+SECRETKEY=$(grep SECRET_KEY $SETTINGSFILE | awk -F ' ' {'print $3'})
+
+echo "SECRET_KEY=$SECRETKEY" > ${config[projectname]}/.env
+echo "ENGINE='django.db.backends.${config[dbengine]}'" >> ${config[projectname]}/.env
+echo "USER=${config[user]}" >> ${config[projectname]}/.env
+echo "PASSWORD=${config[password]}" >> ${config[projectname]}/.env
+echo "HOST=${config[host]}" >> ${config[projectname]}/.env
+echo "PORT=${config[port]}" >> ${config[projectname]}/.env
+
 
 # ============================
 # Modifying the settings file
 # ============================
 
-sed -Ei '/from.*/a import environ\nimport os' $PROJECTNAME/$PROJECTNAME/settings.py
-sed -Ei '/BASE_DIR = Path.*/a env = environ.Env()' $PROJECTNAME/$PROJECTNAME/settings.py
+sed -Ei '/from.*/a import environ\nimport os' $SETTINGSFILE
+sed -Ei '/BASE_DIR = Path.*/a env = environ.Env()' $SETTINGSFILE
+sed -Ei "/env =.*/a environ.Env.read_env(os.path.join(BASE_DIR, \'.env\'))"
+sed -Ei "s/SECRET_KEY =.*/SECRET_KEY = env(\'SECRET_KEY\')/" $SETTINGSFILE
+sed -Ei "s/'ENGINE':.*/'ENGINE': env('ENGINE'),/" $SETTINGSFILE
+sed -Ei "s/'NAME': BASE.*/'NAME': env('NAME'),\n\t\t'USER': env('USER'),\n\t\t'PASSWORD': env('PASSWORD'),\n\t\t'HOST': env('HOST'),\n\t\t'PORT': env('PORT'),/" $SETTINGSFILE
 
