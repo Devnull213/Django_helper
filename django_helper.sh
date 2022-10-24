@@ -20,6 +20,7 @@ config=(
     [port]=5432
     [djangoversion]="4.1.2"
     [djangoapps]=false
+    [appname]=[]
     )
 
 while read line
@@ -98,8 +99,34 @@ sed -Ei "s/SECRET_KEY =.*/SECRET_KEY = env(\'SECRET_KEY\')/" $SETTINGSFILE
 sed -Ei "s/'ENGINE':.*/'ENGINE': env('ENGINE'),/" $SETTINGSFILE
 sed -Ei "s/'NAME': BASE.*/'NAME': env('NAME'),\n\t\t'USER': env('USER'),\n\t\t'PASSWORD': env('PASSWORD'),\n\t\t'HOST': env('HOST'),\n\t\t'PORT': env('PORT'),/" $SETTINGSFILE
 
+# ============
+# App creation
+# ============
+
 if [[ ${config[djangoapps]} -eq true ]]; then
-    echo ${config[djangoapps]}
+    echo "[*] Creating applications"
+
+    cd ${config[projectname]}
+    for app in ${config[appname]};do
+	python manage.py startapp $app
+    done
 fi
+
+#===========
+# Git config
+#===========
+
+echo "[*] Initialising git..."
+
+git init
+touch .gitignore
+echo -e '.gitignore\n.env' >> .gitignore
+
+# =================
+# Finishing process
+# =================
+
+echo "[*] Program finished. Happy coding!"
+deactivate
 
 
